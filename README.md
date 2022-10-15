@@ -17,10 +17,17 @@ At the bottom of the page you see your full balance including how much you owe, 
 *Files' tree:
 
 ./main.py - main script, used to launch the back-end server
+
 ./website/__init__.py - script for initializing Flask application and database
+
 ./website/models.py - used for creating SQLAlchemy models
+
 ./website/balance.py - script for counting user's balance
+
 ./website/auth.py - script for receiving requests and sending responses for registration/login
+
 ./website/views.py - script for rendering Flask pages and handling HTTP requests
+
 ./website/static/ - folder for front-end files as CSS and images
+
 ./website/templates/ - folder for templates for rendering HTML pages
