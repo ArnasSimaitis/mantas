@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% block header %}Mano sąskaitos{%endblock%}
+{%block content%}
+<div id="groups-nav">
+    <div class="groups-nav-item active" style="border-top-left-radius: 5px;border-bottom-left-radius:5px"><b>Grupės nėra</b></br><i>Spauskite, kad sukurti</i></div>
+    <div class="groups-nav-item"><b>Grupės nėra</b></br><i>Spauskite, kad sukurti</i></div>
+    <div class="groups-nav-item"><b>Grupės nėra</b></br><i>Spauskite, kad sukurti</i></div>
+    <div class="groups-nav-item"><b>Grupės nėra</b></br><i>Spauskite, kad sukurti</i></div>
+    <div class="groups-nav-item"><b>Grupės nėra</b></br><i>Spauskite, kad sukurti</i></div>
+    <div class="groups-nav-item"><b>Grupės nėra</b></br><i>Spauskite, kad sukurti</i></div>
+    <div class="groups-nav-item" style="border-right:none;border-top-right-radius: 5px;border-bottom-right-radius:5px"><b>Grupės nėra</b></br><i>Spauskite, kad sukurti</i></div>
+</div>
+<div id="groups-manager">
+    <ul id="groups-manager-content">
+    </ul>
+    <!--<ul id="user-balance">
+        <li></li>
+    </ul>!-->
+</div>
+<script>
+    var group_users = []
+    sendRequest(4,"{{user.name}}",group_list_number=0)
+    sendRequest(3,"{{user.name}}")
+    function loadGroupsNav(how_many,names,descriptions){
+        var navItems = document.getElementsByClassName('groups-nav-item')
+        for(let x=0; x<how_many;x++){
+            navItems[x].innerHTML = `<b>${names[x]}</b></br><i>${descriptions[x]}</i>`
+        }
+        for(let x=0; x<navItems.length; x++){
+            if (navItems[x].className == 'groups-nav-item active'){
+                sendRequest(4,"{{user.name}}",group_list_number=x)
+            }
+            navItems[x].addEventListener('click',function(){
+                document.getElementsByClassName('groups-nav-item active')[0].className = 'groups-nav-item'
+                navItems[x].className = 'groups-nav-item active'
+                if(navItems[x].innerText.indexOf('Grupės nėra') != -1) return createGroup()
+                sendRequest(4,"{{user.name}}",group_list_number=x)
+            })
+        }
+    }
+
+    function loadInfo(group_number, names=[],sums=[],users=[]){
+        var groupUl = document.getElementById("groups-manager-content")
+        groupUl.innerHTML = ''
+        for(let x=0;x<names.length;x++){
+            groupUl.innerHTML += `<li><b>${sums[x]} Eur</b> už <i>${names[x]}</i>. Pridėjo: <i>${users[x]}</i></li>`
+        }
+        groupUl.innerHTML += '<li><b>Pridėti sąskaitą:</b> <input id="bill-name" placeholder="Pavadinimas"> <input type="number" id="sum" placeholder="19.30">Eur <button id="add-bill">PRIDĖTI</button></li>'
+        document.getElementById('add-bill').addEventListener('click',function(){
+            console.log(document.getElementById('bill-name').value)
+            sendRequest(5, "{{user.name}}", group_list_number = group_number, bill_name=document.getElementById('bill-name').value, sum=document.getElementById('sum').value)
+        })
+    }
+
+    function createGroup(){
+        var groupUl = document.getElementById("groups-manager-content")
+        groupUl.innerHTML = "<li><b>Grupės pavadinimas:</b> <input id='group-name'></li>"
+        groupUl.innerHTML += "<li><b>Grupės aprašymas:</b> <input id='group-description' style='width:50%'>"
+        groupUl.innerHTML += "<li><b>Pridėti narius:</b> <input id='input-user' placeholder='Vartotojo vardas'><button id='input-user-button'>PRIDĖTI</button></li>"
+        groupUl.innerHTML += "<li id='added-users'><b>Pridėti nariai:</b> {{ user.name }}</li>"
+        groupUl.innerHTML += "<li id='createGroup' style='text-align:center'><b>SUKURTI GRUPĘ</b></li>"
+        group_users.push("{{ user.name }}")
+        
+        // Narių pridėjimas
+        var userInputBtn = document.getElementById('input-user-button')
+        var userInput = document.getElementById('input-user')
+        userInputBtn.addEventListener('click', function(){
+            if(userInput.value == '') return 0;
+            else if(document.getElementById('added-users').innerText.indexOf(userInput.value) != -1) return document.getElementById('login-error').innerText = "Vartotojas jau pridėtas"
+            document.getElementById('login-error').innerHTML = ''
+            sendRequest(1,userInput.value)
+            userInput.value = ''
+        })
+
+        // Grupės sukūrimas
+        var createGroupBtn = document.getElementById('createGroup')
+        createGroupBtn.addEventListener('click', function(){
+            if(document.getElementById('group-name').value == '') return document.getElementById('login-error').innerText = 'Įveskite grupės pavadinimą'
+            sendRequest(2, "{{ user.name }}", document.getElementById('group-name').value, document.getElementById('group-description').value, group_users)
+        })
+    }
+
+    function sendRequest(req,user,group_name = '', group_description = '', group_users_input = []){
+        var xml = new XMLHttpRequest()
+        xml.open("POST","{{ url_for('views.bills') }}", true)
+        xml.setRequestHeader("Content-type","application/x-www-form-urlencoded")
+        xml.onload = function(){
+            var dataReply = JSON.parse(this.responseText)
+            if(req==1){
+                if(dataReply['response'] == 1){
+                    document.getElementById('added-users').innerHTML += `, ${user}`
+                    console.log('Čia')
+                    group_users.push(user)
+                }
+                else{
+                    document.getElementById('login-error').innerHTML = dataReply['response']
+                }
+            }
+            else if(req==2){
+                if(dataReply['response'] == 1){
+                    group_users = []
+                    sendRequest(3,"{{user.name}}")
+                }
+                else{
+                    document.getElementById('login-error').innerHTML = dataReply['response']
+                }
+            }
+            else if(req==3){
+                if(dataReply['response'] != 1){
+                    createGroup()
+                }
+                loadGroupsNav(dataReply['how_many'],dataReply['names'],dataReply['descriptions'])
+            }
+            else if(req==4){
+                if(dataReply['response'] == 0){
+                    loadInfo(group_list_number)
+                }
+                loadInfo(group_list_number,dataReply['names'],dataReply['sums'],dataReply['users'])
+            }
+            else if(req==5){
+                console.log(bill_name)
+                if(dataReply['response'] != 1) return 0
+                sendRequest(4, user, group_list_number)
+            }
+        }
+        if(req==1){
+            xml.send(JSON.stringify({
+                'user':user,
+                'req':req
+            }))
+        }
+        else if(req==2){
+            xml.send(JSON.stringify({
+                'req':req,
+                'user':user,
+                'group_name':group_name,
+                'group_description':group_description,
+                'group_users':group_users_input
+            }))
+        }
+        else if(req==3){
+            xml.send(JSON.stringify({
+                'req':req,
+                'user':user
+            }))
+        }
+        else if(req==4){
+            xml.send(JSON.stringify({
+                'req':req,
+                'user':user,
+                'group_list_number':group_list_number
+            }))
+        }
+        else if(req==5){
+            xml.send(JSON.stringify({
+                'req':req,
+                'user':user,
+                'bill_name':bill_name,
+                'sum':sum,
+                'group_list_number':group_list_number
+            }))
+        }
+    }
+</script>
+{%endblock%}
+
+{% block adminPanel %}
+<p>
+    <ul id="join-group">
+        <li>Prisijungti prie grupės:</li>
+        <li><input id="join-group-name" placeholder="Grupės pavadinimas/ID"></li>
+        <li onclick="joinGroup()">PRISIJUNGTI</li>
+    </ul>
+    <ul id="admin-panel" style="margin-top:10px">
+    </ul>
+    <script>
+        req(parseInt("{{ user.id }}"),7)
+
+        function joinGroup(){
+            let group_name = document.getElementById('join-group-name')
+            if(group_name.value == '') return 0;
+            req(group_name.value, 6)
+        }
+
+        function getWaitList(users,groups,ids){
+            document.getElementById('admin-panel').innerHTML = '<li>Laukia patvirtinimo Jūsų grupėse:</li>'
+            for(let x=0;x<users.length;x++){
+                document.getElementById('admin-panel').innerHTML += `<li class='waiting-users' id='${x}li'><button id='${x}yes'>+</button> ${users[x]} (<i>grupė: ${groups[x]}</i>) <button id='${x}no'>-</button></li>`
+                document.getElementById(`${x}yes`).addEventListener('click', function(){
+                    req(ids[x], 8)
+                    document.getElementById(`${x}li`).remove()
+                })
+                document.getElementById(`${x}no`).addEventListener('click', function(){
+                    req(ids[x], 9)
+                    document.getElementById(`${x}li`).remove()
+                })
+            }
+        }
+
+        function req(input, req){
+            var xml = new XMLHttpRequest()
+            xml.open("POST","{{ url_for('views.bills') }}", true)
+            xml.setRequestHeader("Content-type","application/x-www-form-urlencoded")
+            xml.onload = function(){
+                var dataReply = JSON.parse(this.responseText)
+                if(req == 6){
+                    if(dataReply['response'] == 1){
+                        document.getElementById('login-error').innerHTML = "Prašymas išsiųstas. Laukite patvirtinimo."
+                    }
+                    else{
+                        document.getElementById('login-error').innerHTML = dataReply['response']
+                    }
+                }
+                else if(req == 7){
+                    if(dataReply['response'] == 0) return 0
+                    else return getWaitList(dataReply['users'],dataReply['groups'],dataReply['ids'])
+                }
+                else if(req == 8){
+                    return 0;
+                }
+                else if(req == 9){
+                    return 0;
+                }
+            }
+            if(req == 6){
+                xml.send(JSON.stringify({
+                    'req':req,
+                    'user':parseInt("{{user.id}}"),
+                    'group':input
+                }))
+            }
+            if(req == 7){
+                xml.send(JSON.stringify({
+                    'req':req,
+                    'user':input
+                }))
+            }
+            if(req == 8){
+                xml.send(JSON.stringify({
+                    'req':req,
+                    'user':input
+                }))
+            }
+            if(req == 9){
+                xml.send(JSON.stringify({
+                    'req':req,
+                    'user':input
+                }))
+            }
+        }
+    </script>
+</p>
+{% endblock %}

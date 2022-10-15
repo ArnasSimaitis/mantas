@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block login %}
+<script>
+    let loginButton = document.getElementsByTagName('li')[4]
+    let registerButton = document.getElementsByTagName('li')[5]
+    let navList = document.getElementsByTagName('ul')[0]
+
+    loginButton.addEventListener('click',function(){
+        if(checkInputs() == 0) return 0
+        sendData(document.getElementsByTagName('input')[0].value,document.getElementsByTagName('input')[1].value,2)
+    })
+
+    registerButton.addEventListener('click', onRegister)
+
+    function onRegister(){
+        if(checkInputs() == 0){
+            document.getElementById('login-error').innerHTML = "Įveskite prisijungimo vardą ir slaptažodį."
+            return 0
+        }
+        document.getElementById('login-error').innerHTML = ""
+        checkPassLi = document.createElement('li')
+        checkPassInput = document.createElement("input")
+        checkPassInput.type = 'password'
+        checkPassInput.placeholder = 'Pakartokite slaptažodį'
+        checkPassLi.appendChild(checkPassInput)
+        navList.appendChild(checkPassLi)
+        registerButton.removeEventListener("click", onRegister)
+        checkPassInput.addEventListener('input', onRegisterCheck)
+    }
+
+    function onRegisterCheck(){
+        if(checkPassInput.value == document.getElementsByTagName('input')[1].value){
+            checkPassInput.disabled = true
+            document.getElementsByTagName('input')[1].disabled = true
+            sendData(document.getElementsByTagName('input')[0].value,checkPassInput.value,1)
+        }
+    }
+
+    function checkInputs(){
+        if(document.getElementsByTagName('input')[0].value == "" || document.getElementsByTagName('input')[1].value == "") return 0
+        else return 1
+    }
+
+    function sendData(name,password,req){
+        var xml = new XMLHttpRequest()
+        xml.open("POST","{{ url_for('auth.login') }}", true)
+        xml.setRequestHeader("Content-type","application/x-www-form-urlencoded")
+        xml.onload = function(){
+            var dataReply = JSON.parse(this.responseText)
+            if(dataReply['response'] == 1) return location.replace("/");
+            else{
+                return document.getElementById('login-error').innerHTML = dataReply['response']
+            }
+        }
+        xml.send(JSON.stringify({
+            'name':name,
+            'password':password,
+            'req':req
+        }))
+    }
+</script>
+{% endblock %}
